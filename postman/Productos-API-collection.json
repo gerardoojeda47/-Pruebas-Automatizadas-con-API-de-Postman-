@@ -1,0 +1,377 @@
+{
+  "info": {
+    "name": "Productos API - CRUD",
+    "_postman_id": "7c4c3f0c-aaaa-bbbb-cccc-1234567890ab",
+    "description": "Colección para CRUD de productos con variable de colección CANTIDAD_PRODUCTOS y validaciones.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Obtener Productos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{BASE_URL}}/api/productos"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Respuesta 200\", () => pm.response.to.have.status(200));",
+              "",
+              "let jsonData = [];",
+              "try { jsonData = pm.response.json(); } catch (e) { /* no JSON */ }",
+              "",
+              "const count = Array.isArray(jsonData)",
+              "  ? jsonData.length",
+              "  : (Array.isArray(jsonData.productos) ? jsonData.productos.length : 0);",
+              "",
+              "pm.collectionVariables.set(\"CANTIDAD_PRODUCTOS\", count);",
+              "",
+              "pm.test(\"Actualizó CANTIDAD_PRODUCTOS\", () => {",
+              "  pm.expect(Number(pm.collectionVariables.get(\"CANTIDAD_PRODUCTOS\"))).to.eql(count);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crear Producto",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": {{CODIGO_RANDOM}},\n  \"nombre\": \"{{NOMBRE_RANDOM}}\",\n  \"precio\": {{PRECIO_RANDOM}},\n  \"categoria\": \"{{CATEGORIA_RANDOM}}\"\n}"
+        },
+        "url": "{{BASE_URL}}/api/productos"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const now = Date.now();",
+              "pm.variables.set('CODIGO_RANDOM', (now % 1000000000));",
+              "pm.variables.set('NOMBRE_RANDOM', `Prod ${now}`);",
+              "pm.variables.set('PRECIO_RANDOM', Number((Math.random()*100 + 1).toFixed(2)));",
+              "const cats = ['Ropa','Calzado','Electrodomestico'];",
+              "pm.variables.set('CATEGORIA_RANDOM', cats[Math.floor(Math.random()*cats.length)]);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Creado (200/201)\", () => pm.expect([200, 201]).to.include(pm.response.code));",
+              "",
+              "// Capturar ID del producto creado para usar en PUT/DELETE",
+              "let created = {};",
+              "try { created = pm.response.json(); } catch (e) {}",
+              "if (created && created._id) {",
+              "  pm.collectionVariables.set(\"ID_PRODUCTO\", created._id);",
+              "}",
+              "",
+              "// Invocar función de recálculo",
+              "const recalc = eval(pm.collectionVariables.get(\"RECALC_CANTIDAD_FUNC\"));",
+              "recalc();"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Actualizar Producto",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Camisa Premium\",\n  \"precio\": 79.99\n}"
+        },
+        "url": "{{BASE_URL}}/api/productos/{{ID_PRODUCTO}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Respuesta 200\", () => pm.response.to.have.status(200));",
+              "",
+              "let body = {};",
+              "try { body = pm.response.json(); } catch (e) {}",
+              "",
+              "pm.test('La respuesta contiene \"producto\" de tipo object', () => {",
+              "  pm.expect(body).to.have.property(\"producto\");",
+              "  pm.expect(body.producto).to.be.an(\"object\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Eliminar Producto",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{BASE_URL}}/api/productos/{{ID_PRODUCTO}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Respuesta 200\", () => pm.response.to.have.status(200));",
+              "",
+              "let body = {};",
+              "try { body = pm.response.json(); } catch (e) { /* no JSON */ }",
+              "",
+              "pm.test('Mensaje de eliminación correcto', () => {",
+              "  pm.expect(body.mensaje).to.eql(\"Producto Eliminado\");",
+              "});",
+              "",
+              "// Recalcular cantidad desde GET",
+              "const recalc = eval(pm.collectionVariables.get(\"RECALC_CANTIDAD_FUNC\"));",
+              "recalc();"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pruebas de errores",
+      "item": [
+        {
+          "name": "Obtener Producto - ID inválido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{BASE_URL}}/api/productos/invalid-id"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"400 ID no válido\", () => pm.response.to.have.status(400));",
+                  "",
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('Mensaje de error ID no válido', () => {",
+                  "  pm.expect(body.error).to.eql(\"ID no válido\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener Producto - No encontrado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{BASE_URL}}/api/productos/000000000000000000000000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"404 no encontrado\", () => pm.response.to.have.status(404));",
+                  "",
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('Mensaje de error no encontrado', () => {",
+                  "  pm.expect(body.error).to.eql(\"Producto no encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar Producto - ID inválido",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Algo\"\n}"
+            },
+            "url": "{{BASE_URL}}/api/productos/invalid-id"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"400 ID no válido\", () => pm.response.to.have.status(400));",
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('Mensaje de error ID no válido', () => {",
+                  "  pm.expect(body.error).to.eql(\"ID no válido\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar Producto - No encontrado",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Algo\"\n}"
+            },
+            "url": "{{BASE_URL}}/api/productos/000000000000000000000000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"404 no encontrado\", () => pm.response.to.have.status(404));",
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('Mensaje de error no encontrado', () => {",
+                  "  pm.expect(body.error).to.eql(\"Producto no encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar Producto - ID inválido",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{BASE_URL}}/api/productos/invalid-id"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"400 ID no válido\", () => pm.response.to.have.status(400));",
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('Mensaje de error ID no válido', () => {",
+                  "  pm.expect(body.error).to.eql(\"ID no válido\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar Producto - No encontrado",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{BASE_URL}}/api/productos/000000000000000000000000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"404 no encontrado\", () => pm.response.to.have.status(404));",
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "pm.test('Mensaje de error no encontrado', () => {",
+                  "  pm.expect(body.error).to.eql(\"Producto no encontrado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Inicializa variable si no existe",
+          "if (pm.collectionVariables.get(\"CANTIDAD_PRODUCTOS\") === undefined) {",
+          "  pm.collectionVariables.set(\"CANTIDAD_PRODUCTOS\", 0);",
+          "}",
+          "",
+          "// BASE_URL por defecto",
+          "if (!pm.collectionVariables.get(\"BASE_URL\")) {",
+          "  pm.collectionVariables.set(\"BASE_URL\", \"http://localhost:3000\");",
+          "}",
+          "",
+          "// Función reutilizable para recalcular el conteo desde GET /api/productos",
+          "pm.collectionVariables.set(\"RECALC_CANTIDAD_FUNC\", `",
+          "(function recalcCantidadProductos(baseOverride) {",
+          "  const base = baseOverride",
+          "    || pm.environment.get(\"BASE_URL\")",
+          "    || pm.collectionVariables.get(\"BASE_URL\")",
+          "    || \"http://localhost:3000\";",
+          "",
+          "  return new Promise((resolve) => {",
+          "    pm.sendRequest({ url: base + \"/api/productos\", method: \"GET\" }, (err, res) => {",
+          "      pm.test(\"Recalcular productos - solicitud exitosa\", () => {",
+          "        pm.expect(err).to.be.null;",
+          "        pm.expect(res).to.have.property('code').that.is.oneOf([200]);",
+          "      });",
+          "",
+          "      let data;",
+          "      try { data = res.json(); } catch (e) { data = []; }",
+          "",
+          "      const list = Array.isArray(data)",
+          "        ? data",
+          "        : (Array.isArray(data?.productos) ? data.productos : []);",
+          "",
+          "      pm.collectionVariables.set(\"CANTIDAD_PRODUCTOS\", list.length);",
+          "",
+          "      pm.test(\"CANTIDAD_PRODUCTOS actualizado por recálculo\", () => {",
+          "        pm.expect(Number(pm.collectionVariables.get(\"CANTIDAD_PRODUCTOS\")))",
+          "          .to.eql(list.length);",
+          "      });",
+          "",
+          "      resolve({ ok: true, count: list.length });",
+          "    });",
+          "  });",
+          "});",
+          "`);"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "variable": [
+    { "key": "BASE_URL", "value": "http://localhost:3000" },
+    { "key": "CANTIDAD_PRODUCTOS", "value": "0" },
+    { "key": "ID_PRODUCTO", "value": "" }
+  ]
+}

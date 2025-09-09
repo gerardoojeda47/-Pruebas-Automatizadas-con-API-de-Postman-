@@ -1,0 +1,27 @@
+{
+  "name": "crudmongonodeexpress",
+  "version": "1.0.0",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node app.js",
+    "test": "npm run test:api",
+    "test:api": "newman run postman/Productos-API-collection-simple.json -e postman/Local-environment.json --reporters cli --timeout-request 60000",
+    "test:api:report": "newman run postman/Productos-API-collection-simple.json -e postman/Local-environment.json --reporters cli,html --reporter-html-export postman/newman-report.html --timeout-request 60000"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.0",
+    "express": "^5.1.0",  
+    "mongoose": "^8.16.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "newman": "^6.2.0"
+  }
+}
